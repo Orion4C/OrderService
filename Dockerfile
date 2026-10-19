@@ -13,6 +13,8 @@ WORKDIR /app
 RUN apt-get update \
 # Download latest versions of required packages
     && apt-get upgrade -y\
+# Download and install curl and only required packages
+    && apt-get install -y --no-install-recommends curl \
 # Remove list of available packages
     && rm -rf /var/lib/apt/lists/* \
     && adduser --disabled-password --gecos "" appuser
