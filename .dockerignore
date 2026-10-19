@@ -1,0 +1,15 @@
+# Ignore local build
+**/bin/
+**/obj/
+
+# Ignore source control
+.git/
+.gitignore
+
+# Ignore local ide
+.vs/
+.vscode/
+
+# Ignore docker files
+Dockerfile
+.dockerignore
