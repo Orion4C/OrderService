@@ -9,7 +9,13 @@ RUN dotnet publish -c Release -o /app/publish
 # --- Stage 2: runtime ---
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-RUN adduser --disabled-password --gecos "" appuser
+# Pull list of available packages
+RUN apt-get update \
+# Download latest versions of required packages
+    && apt-get upgrade -y\
+# Remove list of available packages
+    && rm -rf /var/lib/apt/lists/* \
+    && adduser --disabled-password --gecos "" appuser
 COPY --from=build /app/publish .
 USER appuser
 EXPOSE 8080
