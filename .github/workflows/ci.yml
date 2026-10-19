@@ -14,7 +14,7 @@ on:
 
 env:
   IMAGE_NAME: orderservice
-  REGISTRY: ghcr.io/Orion4COrg
+  REGISTRY: ghcr.io/orion4Corg
 
 jobs:
   format-and-test:
@@ -32,7 +32,7 @@ jobs:
       - run: dotnet format --verify-no-changes
       - run: dotnet build -c Release
       - run: dotnet test
-      - run: dotnet list package --vulnerable --include-transative
+      - run: dotnet list package --vulnerable --include-transitive
 
   docker-build-and-scan:
     if: ${{ !inputs.redeploy_only }}
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --pasword-stdn
+      - run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --pasword-stdin
       - run: docker build -t $REGISTRY/$IMAGE_NAME:$GITHUB_SHA .
       - run: docker push $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
   
@@ -71,10 +71,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: docker pull $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
-      - run: docker stop orderservice-prod 2>/dev/null; docker rm orderservice 2>/dev/null || true
+      - run: docker stop orderservice-prod 2>/dev/null; docker rm orderservice-prod 2>/dev/null || true
       - run: |
           docker run -d --name orderservice-prod \
             -p 8080:8080 \
             -e APP_VERSION=$GITHUB_SHA \
-            $RIGERTY/$IMAGE_NAME:$GITHUB_SHA
+            $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
       - run: curl --fail http://localhost:8080/version
