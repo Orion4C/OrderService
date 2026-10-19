@@ -57,7 +57,7 @@ jobs:
 
   push:
     needs: docker-build-and-scan
-    if: github.ref == 'refs/heads/main' && !inputs.redeploy_only
+    if: github.ref == 'refs/heads/master' && !inputs.redeploy_only
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -67,7 +67,7 @@ jobs:
   
   deploy:
     needs: push
-    if: (github.ref == 'refs/heads/main' || inputs.redeploy_only)
+    if: (github.ref == 'refs/heads/master' || inputs.redeploy_only)
     runs-on: ubuntu-latest
     steps:
       - run: docker pull $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
