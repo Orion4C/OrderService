@@ -4,6 +4,7 @@
 
 # Ignore source control
 .git/
+.github/
 .gitignore
 
 # Ignore local ide
