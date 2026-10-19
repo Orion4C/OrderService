@@ -1,3 +1,6 @@
+# Ignore local tools
 trivy.exe
+
+# Ignore local build
 bin/
 obj/
