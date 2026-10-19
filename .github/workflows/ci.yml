@@ -67,7 +67,7 @@ jobs:
   
   deploy:
     needs: push
-    if: always() && (github.ref == 'refs/heads/main' || inputs.redeploy_only)
+    if: (github.ref == 'refs/heads/main' || inputs.redeploy_only)
     runs-on: ubuntu-latest
     steps:
       - run: docker pull $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
