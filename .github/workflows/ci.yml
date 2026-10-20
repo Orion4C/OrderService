@@ -1,5 +1,6 @@
 name: CI
 
+# Workflow triggers
 on:
   push:
     branches: [master]
@@ -12,43 +13,67 @@ on:
         type: boolean
         default: false
 
+# Global ENV
 env:
   IMAGE_NAME: orderservice
   REGISTRY: ghcr.io/orion4corg
 
 jobs:
   format-and-test:
+    # Skip during redeploy
     if: ${{ !inputs.redeploy_only }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Install latest .NET 8 Core SDK
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - uses: actions/cache@v4
+
+      - name: Setup caching for dependancies
+        uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
+          # If dependancies change update cache
           key: nuget-${{ hashFiles('**/*.csproj') }}
-      - run: dotnet format --verify-no-changes
-      - run: dotnet build -c Release
-      - run: dotnet test
-      - run: dotnet list package --vulnerable --include-transitive
+
+      - name: Check .NET formatting guidlines
+        run: dotnet format --verify-no-changes
+
+      - name: Compile application using Release configuration
+        run: dotnet build -c Release
+
+      - name: Execute unit and integration tests
+        run: dotnet test
+
+      - name: Audit known security vulnerabilities in dependancies
+        run: dotnet list package --vulnerable --include-transitive
 
   docker-build-and-scan:
+    # Skip during redeploy
     if: ${{ !inputs.redeploy_only }}
     needs: format-and-test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - name: Clone Repository
+        uses: actions/checkout@v4
+
+      - name: Setup docker buildx toolset
+        uses: docker/setup-buildx-action@v3
+
+      - name: Trigger docker build image
+        uses: docker/build-push-action@v6
         with:
           context: .
           tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - uses: aquasecurity/trivy-action@master
+
+      - name: Scan image vulnerabilities w/ Trivy
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: '${{ env.IMAGE_NAME }}:${{ github.sha }}'
           severity: 'HIGH,CRITICAL'
@@ -60,27 +85,43 @@ jobs:
     if: github.ref == 'refs/heads/master' && !inputs.redeploy_only
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - run: docker build -t $REGISTRY/$IMAGE_NAME:$GITHUB_SHA .
-      - run: docker push $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
+      - name: Clone Repository
+        uses: actions/checkout@v4
+        
+      - name: Authenticate runner using GHCR
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      
+      - name: Compile application into container
+        run: docker build -t $REGISTRY/$IMAGE_NAME:$GITHUB_SHA .
+      
+      - name: Push container to registry
+        run: docker push $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
   
   deploy:
     needs: push
     if: (github.ref == 'refs/heads/master' || inputs.redeploy_only)
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - run: docker pull $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
-      - run: |
+      - name: Authenticate runner using GHCR
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      
+      - name: Pull container image from registry
+        run: docker pull $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
+      
+      - name: Stop and remove existing containers
+        run: |
           docker stop orderservice-prod 2>/dev/null || true
           docker rm orderservice-prod 2>/dev/null || true
-      - run: |
+      
+      - name: Start new container
+        run: |
           docker run -d --name orderservice-prod \
             -p 8080:8080 \
             -e APP_VERSION=$GITHUB_SHA \
             $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
-      - run: |
+
+      - name: Container healthcheck
+        run: |
           for i in $(seq 1 15); do
             if OUT=$(curl -fsS -max-time 3 http://localhost:8080/version); then
               echo "version: $OUT"
@@ -88,7 +129,10 @@ jobs:
             fi
             sleep 2
           done
-      - if: failure()
+          exit 1
+
+      - name: Log healthcheck failure
+        if: failure()
         run: |
           docker ps -a
           docker logs orderservice-prod
