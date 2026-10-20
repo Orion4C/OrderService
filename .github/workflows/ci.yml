@@ -81,7 +81,10 @@ jobs:
             -e APP_VERSION=$GITHUB_SHA \
             $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
       - run: |
-          for i in $(seq 1 15); do \
-            curl -fsS http://localhost:8080/version && break
+          for i in $(seq 1 15); do
+            if OUT=$(curl -fsS http://localhost:8080/version) >/dev/null; then
+              echo "$OUT"
+              break
+            fi
             sleep 2
           done
