@@ -82,9 +82,10 @@ jobs:
             $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
       - run: |
           for i in $(seq 1 15); do
-            if OUT=$(curl -fsS http://localhost:8080/version) >/dev/null; then
-              echo "$OUT"
-              break
+            if OUT=$(curl -fsS -max-time 3 http://localhost:8080/version); then
+              echo "version: $OUT"
+              exit 0
             fi
             sleep 2
           done
+          exit 1
