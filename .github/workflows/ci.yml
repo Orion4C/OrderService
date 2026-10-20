@@ -82,5 +82,6 @@ jobs:
             $REGISTRY/$IMAGE_NAME:$GITHUB_SHA
       - run: |
           for i in $(seq 1 15); do \
-          curl -fsS http://localhost:8080/version && break \
-          sleep 2
+            curl -fsS http://localhost:8080/version && break
+            sleep 2
+          done
