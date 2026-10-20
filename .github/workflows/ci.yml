@@ -123,12 +123,15 @@ jobs:
       - name: Container healthcheck
         run: |
           for i in $(seq 1 15); do
-            if OUT=$(curl -fsS -max-time 3 http://localhost:8080/version); then
+            if OUT=$(curl -fsS --max-time 3 http://localhost:8080/version); then
               echo "version: $OUT"
-              exit 0
+              if [ "$OUT" = "$GITHUB_SHA" ]; then exit 0; fi
+              echo "version mismatch, expected $GITHUB_SHA"
+              exit 1
             fi
             sleep 2
           done
+          echo "app never responded"
           exit 1
 
       - name: Log healthcheck failure
