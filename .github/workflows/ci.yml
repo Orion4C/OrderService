@@ -88,4 +88,8 @@ jobs:
             fi
             sleep 2
           done
+      - if: failure()
+        run: |
+          docker ps -a
+          docker logs orderservice-prod
           exit 1
