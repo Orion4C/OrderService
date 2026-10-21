@@ -99,7 +99,7 @@ jobs:
   
   deploy:
     needs: push
-    if: (github.ref == 'refs/heads/master' || inputs.redeploy_only)
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && (needs.push.result == 'success' || (inputs.redeploy_only && needs.push.result == 'skipped')) }}
     runs-on: ubuntu-latest
     steps:
       - name: Authenticate runner using GHCR
